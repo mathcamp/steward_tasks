@@ -1,0 +1,20 @@
+version: 1
+formatters:
+  simple:
+    format: "%(levelname)s %(asctime)s %(module)s %(message)s"
+
+root:
+  handlers:
+    - console
+  level: WARNING
+loggers:
+  steward_tasks:
+    handlers:
+      - console
+    level: DEBUG
+    propagate: false
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    formatter: simple
