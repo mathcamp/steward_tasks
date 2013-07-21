@@ -1,5 +1,7 @@
 """ Steward tool for running tasks """
 import logging.config
+from ConfigParser import ConfigParser, NoOptionError
+
 
 class InternalAdminAuthPolicy(object):
     """
@@ -53,16 +55,43 @@ class InternalAdminAuthPolicy(object):
         return []
 
 
+class ConfigWrapper(object):
+    """ Dict-like wrapper for the FUCKING HORRIBLE ConfigParser object """
+    def __init__(self, conf_file):
+        self.config = ConfigParser()
+        self.config.read(conf_file)
+        self.section = None
+        for section in self.config.sections():
+            if section.startswith('app:'):
+                self.section = section
+                break
+        if self.section is None:
+            raise ValueError("Could not find 'app:' section in config file!")
+
+    def __getitem__(self, key):
+        try:
+            return self.config.get(self.section, key)
+        except NoOptionError:
+            raise KeyError()
+
+    def get(self, key, default=None):
+        """ Same as dict.get """
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+
 def includeme(config):
     """ Configure the app """
     settings = config.get_settings()
     config.add_authentication_policy(InternalAdminAuthPolicy(
         settings['tasks.token']))
 
+
 def main():
     """ Start running Steward tasks """
     import argparse
-    from ConfigParser import ConfigParser
     import importlib
     import yaml
     parser = argparse.ArgumentParser(description=main.__doc__)
@@ -70,18 +99,15 @@ def main():
             'Steward server')
     args = vars(parser.parse_args())
 
-    config = ConfigParser(defaults={
-        'tasks.pool_size': '10',
-    })
-    config.read(args['config_uri'])
-    log_config = config.get('app:steward', 'tasks.log_config')
+    config = ConfigWrapper(args['config_uri'])
+    log_config = config.get('tasks.log_config')
 
     with open(log_config, 'r') as infile:
         logging.config.dictConfig(yaml.load(infile))
 
     from .tasks import TaskList
     tasklist = TaskList(config)
-    includes = config.get('app:steward', 'pyramid.includes').split()
+    includes = config.get('pyramid.includes').split()
     for package in includes:
         mod = importlib.import_module(package)
         if hasattr(mod, 'include_tasks'):

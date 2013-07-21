@@ -154,9 +154,9 @@ class TaskList(object):
     """
     def __init__(self, config):
         super(TaskList, self).__init__()
-        self.pool = ThreadPool(config.getint('app:steward', 'tasks.pool_size'))
-        self._url = config.get('app:steward', 'tasks.url')
-        self._token = config.get('app:steward', 'tasks.token')
+        self.pool = ThreadPool(int(config.get('tasks.pool_size', 10)))
+        self._url = config['tasks.url']
+        self._token = config['tasks.token']
         self.tasks = []
         self.running_tasks = []
         self.running = True
