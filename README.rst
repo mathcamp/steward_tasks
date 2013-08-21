@@ -9,6 +9,7 @@ Add the required configuration options to the config.ini file for the server. Al
     config.include('steward_tasks')
 
 or in the config.ini file::
+
     pyramid.includes =
         steward_tasks
 
@@ -36,6 +37,17 @@ Then, inside of the ``include_tasks`` block, add it to the tasklist::
 
 The schedule may be formatted in multiple ways. Full documentation can be found
 on the ``steward_tasks.tasks.Task`` object.
+
+Frequently you will want to hit an endpoint from inside of a task. The tasklist
+exposes a method for this::
+
+    def include_tasks(config, tasklist):
+        def hit_endpoint():
+            tasklist.post('/my/endpoint', data={'key': 'val'})
+
+        tasklist.add(hit_endpoint, '*/15 * * * *')
+
+``tasklist.post()`` accepts arguments in the same form as ``requests.post()``.
 
 Configuration
 =============
