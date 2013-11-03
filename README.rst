@@ -1,10 +1,11 @@
 Steward Tasks
 =============
-This is an extension for adding cron-style tasks to Steward.
+This is an extension that adds support for Celery tasks to Steward
 
 Setup
 =====
-Add the required configuration options to the config.ini file for the server. Also add steward_tasks to the includes either programmatically::
+Add the required configuration options to the config.ini file for the server.
+Also add steward_tasks to the includes either programmatically::
 
     config.include('steward_tasks')
 
@@ -13,54 +14,58 @@ or in the config.ini file::
     pyramid.includes =
         steward_tasks
 
+You will need to include steward_tasks before all other extensions, and before
+``pyramid_jinja2``
+
 Usage
 =====
-Steward_tasks is a command, separate from the webserver. To run it, just type
-``steward-tasks config.ini``. This will begin running any tasks. The
-recommended way of running tasks in the background is using supervisord.
+Steward_tasks is a command, separate from the webserver. The commands mirror
+Celery's commands. To start a task worker (which executes tasks), run
+``steward-taskworker config.ini``. To start celerybeat, which will run the
+periodic, scheduled tasks, run ``steward-taskbeat config.ini``. The recommended
+way of running tasks in the background is using supervisord.
 
 Adding Tasks
 ============
+Inside your extension, create a ``tasks.py`` file with the following::
+
+    from steward_tasks import celery, StewardTask
+
+    @celery.task(base=StewardTask)
+    def say_hello(name):
+        return "Hello %s!" % name
+
+Then add ``yourextension.tasks`` to the ``CELERY_IMPORTS`` section of the
+celery.yaml file (see the Configuration section below)
+
+Configuring inside Extensions
+=============================
 Steward_tasks loads extensions much like pyramid. It imports every module in
 `pyramid_includes` and runs the ``include_tasks`` function if present. The
-function should accept a ``ConfigParser.ConfigParser`` and
-``steward_tasks.tasks.TaskList`` as arguments.
+function should accept a ``steward_tasks.TaskConfigurator`` as the only
+argument.
 
-To add a task, write a function that you would like to be run periodically.
-Then, inside of the ``include_tasks`` block, add it to the tasklist::
+You can use this to add mixins (providing more methods to the tasks), schedule
+periodic tasks, or mutate the celery configuration. For example, to schedule a
+periodic callback::
 
-    def say_hi():
-        print "hello!"
+    def include_tasks(config):
+        config.add_scheduled_task('constant_greeting', {
+            'task': 'yourextension.tasks.say_hello',
+            'schedule': timedelta(minutes=1),
+            'args': ['Monty'],
+        })
 
-    def include_tasks(config, tasklist):
-        tasklist.add(say_hi, '* * * * *')
-
-The schedule may be formatted in multiple ways. Full documentation can be found
-on the ``steward_tasks.tasks.Task`` object.
-
-Frequently you will want to hit an endpoint from inside of a task. The tasklist
-exposes a method for this::
-
-    def include_tasks(config, tasklist):
-        def hit_endpoint():
-            tasklist.post('/my/endpoint', data={'key': 'val'})
-
-        tasklist.add(hit_endpoint, '*/15 * * * *')
-
-``tasklist.post()`` accepts arguments in the same form as ``requests.post()``.
 
 Configuration
 =============
 ::
 
-    # Url for the steward server
-    tasks.url = http://localhost:1337
+    # YAML file for configuring logging (required; see logging.dictConfig)
+    tasks.log_config = <path-to-yaml-file>
 
-    # Secret token to authorize with the server
-    tasks.token = S9A73Xk4TtKTlWzNs55Bk7A+ct/spUgymkuppnKs1/8=
+    # YAML file with the celery configuration (required)
+    tasks.celery_conf = <path-to-yaml-file>
 
-    # YAML file for configuring logging (see logging.dictConfig)
-    tasks.log_config = /etc/steward/tasks.yaml
-
-    # How many threads to use for running tasks (default 10)
-    tasks.pool_size = 10
+    # Dotted path to a lock factory implementation. (See steward_tasks.locks)
+    tasks.lock_factory = none

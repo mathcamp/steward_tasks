@@ -1,0 +1,6 @@
+CELERY_RESULT_BACKEND: database
+CELERY_RESULT_DBURI: sqlite:////tmp/steward_celerydb.sqlite
+BROKER_URL: sqla+sqlite:////tmp/steward_celerydb.sqlite
+CELERY_IMPORTS:
+  - steward_tasks.tasks
+CELERY_TASK_RESULT_EXPIRES: 3600

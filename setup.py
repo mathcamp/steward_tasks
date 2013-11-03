@@ -38,7 +38,8 @@ DATA = {
     'packages': find_packages(),
     'entry_points': {
         'console_scripts': [
-            'steward-tasks = steward_tasks:main',
+            'steward-taskworker = steward_tasks:worker',
+            'steward-taskbeat = steward_tasks:beat',
         ],
     },
     'setup_requires': [
