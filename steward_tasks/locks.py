@@ -8,6 +8,24 @@ from multiprocessing import RLock
 
 
 class LockAnnotation(object):
+    """
+    Lock provider
+
+    ::
+
+        @celery.task(base=StewardTask)
+        @lock('mytask', expire=300, timeout=500)
+        def mytask():
+            # do something locked
+
+    Inline locks::
+
+        @celery.task(base=StewardTask)
+        def say_hello(name):
+            with lock.inline('hello_%s' % name):
+                return "Hello %s!" % name
+
+    """
     def __init__(self, factory):
         self._factory = factory
 
@@ -24,6 +42,7 @@ class LockAnnotation(object):
         return wrapper
 
     def inline(self, key, expire=None, timeout=None):
+        """ Get a lock instance from the factory """
         return self._factory(key, expire=expire, timeout=timeout)
 
 
