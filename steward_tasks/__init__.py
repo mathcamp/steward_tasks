@@ -124,6 +124,8 @@ class TaskConfigurator(object):
         'priority')
     registry : object
         Mostly-empty object that exists to get/set attributes onto.
+    after_setup : list
+        List of callbacks that will be called after celery is set up
 
     """
 
@@ -134,6 +136,7 @@ class TaskConfigurator(object):
         self.event_handlers = []
         self._name_resolver = DottedNameResolver(__package__)
         self.registry = Registry(settings)
+        self.after_setup = []
 
     def add_event_handler(self, pattern, callback, priority=100):
         """
@@ -187,6 +190,8 @@ class TaskConfigurator(object):
         for handler in self.event_handlers:
             handler['callback'] = self._name_resolver.maybe_resolve(
                 handler['callback'])
+        for callback in self.after_setup:
+            callback()
 
 
 def includeme(config):
