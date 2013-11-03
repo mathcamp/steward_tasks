@@ -9,9 +9,8 @@ README = open(os.path.join(HERE, 'README.rst')).read()
 CHANGES = open(os.path.join(HERE, 'CHANGES.txt')).read()
 
 REQUIREMENTS = [
-    'requests',
     'PyYAML',
-    'croniter',
+    'celery',
 ]
 
 DATA = {
