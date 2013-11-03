@@ -9,6 +9,7 @@ README = open(os.path.join(HERE, 'README.rst')).read()
 CHANGES = open(os.path.join(HERE, 'CHANGES.txt')).read()
 
 REQUIREMENTS = [
+    'steward',
     'PyYAML',
     'celery',
 ]
