@@ -237,6 +237,7 @@ def init_celery(conf_file):
     celery = Celery('steward_tasks', config_source=config.celery_settings)
 
     config.finish()
+    return config
 
 
 def worker():
@@ -256,7 +257,7 @@ def beat():
     import sys
     from celery.utils.imports import instantiate
     if len(sys.argv) < 2:
-        print "usage: steward-tasks config_uri [celery opts]"
+        print "usage: %s config_uri [celery opts]" % sys.argv[0]
         sys.exit(1)
 
     init_celery(sys.argv.pop(1))
@@ -269,3 +270,16 @@ def beat():
         instantiate(
             'celery.bin.beat:beat',
             app=celery).execute_from_commandline(sys.argv)
+
+def flower():
+    """ Start running flower """
+    import sys
+    from flower.command import FlowerCommand
+    if len(sys.argv) < 2:
+        print "usage: %s config_uri [flower opts]" % sys.argv[0]
+        sys.exit(1)
+
+    init_celery(sys.argv.pop(1))
+
+    cmd = FlowerCommand(celery)
+    cmd.run_from_argv([sys.argv[0]], sys.argv[1:])

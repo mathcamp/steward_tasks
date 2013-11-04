@@ -12,6 +12,7 @@ REQUIREMENTS = [
     'steward',
     'PyYAML',
     'celery',
+    'flower',
 ]
 
 DATA = {
@@ -40,6 +41,7 @@ DATA = {
         'console_scripts': [
             'steward-taskworker = steward_tasks:worker',
             'steward-taskbeat = steward_tasks:beat',
+            'steward-taskflower = steward_tasks:flower',
         ],
     },
     'setup_requires': [
