@@ -14,7 +14,7 @@ class LockAnnotation(object):
     ::
 
         @celery.task(base=StewardTask)
-        @lock('mytask', expire=300, timeout=500)
+        @lock('mytask', expires=300, timeout=500)
         def mytask():
             # do something locked
 
@@ -29,21 +29,21 @@ class LockAnnotation(object):
     def __init__(self, factory):
         self._factory = factory
 
-    def __call__(self, key, expire=None, timeout=None):
+    def __call__(self, key, expires=60, timeout=10):
         """ Decorator for synchronizing a request """
         def wrapper(fxn):
             """ Wrapper for the synchronized request handler """
             @functools.wraps(fxn)
             def wrapped(*args, **kwargs):
                 """ Acquire lock and call a function """
-                with self._factory(key, expire=expire, timeout=timeout):
+                with self._factory(key, expires=expires, timeout=timeout):
                     return fxn(*args, **kwargs)
             return wrapped
         return wrapper
 
-    def inline(self, key, expire=None, timeout=None):
+    def inline(self, key, expires=60, timeout=10):
         """ Get a lock instance from the factory """
-        return self._factory(key, expire=expire, timeout=timeout)
+        return self._factory(key, expires=expires, timeout=timeout)
 
 
 @contextlib.contextmanager
@@ -77,7 +77,7 @@ class ILockFactory(object):
     def __init__(self, settings):
         self._settings = settings
 
-    def __call__(self, key, expire=None, timeout=None):
+    def __call__(self, key, expires, timeout):
         """
         Create a lock unique to the key
 
@@ -85,15 +85,15 @@ class ILockFactory(object):
         ----------
         key : str
             Unique key to identify the lock to return
-        expire : float, optional
-            Maximum amount of time the lock may be held (default infinite)
-        timeout : float, optional
-            Maximum amount of time to wait to acquire the lock before rasing an
-            exception (default infinite)
+        expires : float
+            Maximum amount of time the lock may be held
+        timeout : float
+            Maximum amount of time to wait to acquire the lock before raising
+            an exception
 
         Notes
         -----
-        Not all ILockFactory implementations will respect the ``expire``
+        Not all ILockFactory implementations will respect the ``expires``
         and/or ``timeout`` options. Please refer to the implementation for
         details.
 
@@ -103,7 +103,7 @@ class ILockFactory(object):
 
 class DummyLockFactory(ILockFactory):
     """ No locking will occur """
-    def __call__(self, key, expire=None, timeout=None):
+    def __call__(self, key, expires, timeout):
         return noop()
 
 
@@ -114,13 +114,22 @@ class ProcessLockFactory(ILockFactory):
         self._lock = RLock()
         self._locks = defaultdict(RLock)
 
-    def __call__(self, key, expire=None, timeout=None):
+    def __call__(self, key, expires, timeout):
         with self._lock:
             return self._locks[key]
 
 
 class FileLockFactory(ILockFactory):
-    """ Generate file-level locks that use ``flock`` """
+    """
+    Generate file-level locks that use ``flock``
+
+    Notes
+    =====
+    You may specify ``steward.lock_dir`` in the config file. This directory
+    will contain all the files used for locking. It defaults to
+    '/var/run/steward_locks/'
+
+    """
     def __init__(self, settings):
         super(FileLockFactory, self).__init__(settings)
         self._lockdir = self._settings.get('steward.lock_dir',
@@ -128,5 +137,29 @@ class FileLockFactory(ILockFactory):
         if not os.path.exists(self._lockdir):
             os.makedirs(self._lockdir)
 
-    def __call__(self, key, expire=None, timeout=None):
+    def __call__(self, key, expires, timeout):
         return file_lock(os.path.join(self._lockdir, key))
+
+class RedisLockFactory(ILockFactory):
+    """
+    Use Redis for locking
+
+    Notes
+    =====
+    Requires ``retools`` to be installed.
+
+    You must provide ``steward.redis_url`` in the config file. This should be a
+    redis connection url. For example::
+
+        redis://username:password@localhost:6379/0
+
+    """
+    def __init__(self, settings):
+        super(RedisLockFactory, self).__init__(settings)
+        from redis import StrictRedis
+        url = settings['steward.redis_url']
+        self.redis = StrictRedis.from_url(url)
+
+    def __call__(self, key, expires, timeout):
+        from retools import Lock
+        return Lock(key, expires=expires, timeout=timeout, redis=self.redis)
