@@ -161,5 +161,5 @@ class RedisLockFactory(ILockFactory):
         self.redis = StrictRedis.from_url(url)
 
     def __call__(self, key, expires, timeout):
-        from retools import Lock
+        from retools.lock import Lock
         return Lock(key, expires=expires, timeout=timeout, redis=self.redis)
