@@ -100,6 +100,7 @@ class Registry(object):
 
 
 class TaskConfigurator(object):
+
     """
     Config object that wraps all configuration data
 
@@ -198,6 +199,11 @@ def includeme(config):
     """ Configure the app """
     settings = config.get_settings()
     init_celery(settings)
+    config.add_route('tasks_active', '/tasks/active')
+    config.add_route('tasks_registered', '/tasks/registered')
+    config.add_route('tasks_reserved', '/tasks/reserved')
+    config.add_route('tasks_scheduled', '/tasks/scheduled')
+    config.scan(__package__ + '.views')
 
 
 def init_celery(conf_file):
@@ -270,6 +276,7 @@ def beat():
         instantiate(
             'celery.bin.beat:beat',
             app=celery).execute_from_commandline(sys.argv)
+
 
 def flower():
     """ Start running flower """
