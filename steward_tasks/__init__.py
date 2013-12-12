@@ -62,6 +62,7 @@ class BaseStewardTask(Task):  # pylint: disable=W0223
     abstract = True
     config = None
     callbacks = []
+    registry = None
 
     def after_return(self, status, retval, task_id, args, kwargs, einfo):
         for callback in self.callbacks:
@@ -226,6 +227,7 @@ def init_celery(conf_file):
         if hasattr(mod, 'include_tasks'):
             mod.include_tasks(config)
 
+    BaseStewardTask.registry = config.registry
     StewardTask = type('StewardTask', tuple(config.mixins + [
                        BaseStewardTask]), {'abstract': True, 'config': config})
 
