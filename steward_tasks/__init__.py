@@ -1,14 +1,13 @@
 """ Steward tool for running tasks """
-import os
 import re
 
 import importlib
 import logging.config
 import yaml
-from ConfigParser import ConfigParser
 from celery import Celery, Task
 from celery.datastructures import ExceptionInfo
 from celery.states import SUCCESS, FAILURE
+from pyramid.paster import get_appsettings
 from pyramid.path import DottedNameResolver
 
 from . import locks
@@ -35,18 +34,7 @@ def read_config(conf_file):
     if isinstance(conf_file, dict):
         settings = conf_file
     else:
-        here = os.path.dirname(os.path.abspath(conf_file))
-        config = ConfigParser({'here': here})
-        config.read(conf_file)
-        section = None
-        for section in config.sections():
-            if section.startswith('app:'):
-                section = section
-                break
-        if section is None:
-            raise ValueError("Could not find 'app:' section in config file!")
-
-        settings = dict(config.items(section))
+        settings = get_appsettings(conf_file)
 
     # configure celery
     celery_conf_file = settings['tasks.celery_conf']
